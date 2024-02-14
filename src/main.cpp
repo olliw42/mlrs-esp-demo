@@ -1,22 +1,41 @@
 #include <Arduino.h>
 #include <SPI.h>
+
 // needed to switch off the wifi module. 
-#include <ESP8266WiFi.h>
+#if defined(ESP8266)
+  #include <ESP8266WiFi.h>
+#elif defined(ESP32) 
+  #include <WiFi.h>
+#endif
 
-
-// 3rd party library for hardware timers
+// 3rd party libraries for hardware timers
 // https://github.com/khoih-prog/ESP8266TimerInterrupt
+// https://github.com/khoih-prog/ESP32TimerInterrupt
 #define USING_TIM_DIV16          true           // for medium time and medium accurate timer
-#include "ESP8266TimerInterrupt.h"
-#include "ESP8266_ISR_Timer.h"
 
-ESP8266Timer ITimer;
-ESP8266_ISR_Timer ISR_Timer;
+#if defined(ESP8266)
+  #include "ESP8266TimerInterrupt.h"
+  #include "ESP8266_ISR_Timer.h"
+  ESP8266Timer ITimer;
+  ESP8266_ISR_Timer ISR_Timer;
+#elif defined(ESP32) 
+  #include "ESP32TimerInterrupt.h"
+  ESP32Timer ITimer(1);
+  ESP32_ISR_Timer ISR_Timer;
+#endif
 
-void IRAM_ATTR TimerHandler()
-{
-  ISR_Timer.run();
-}
+#if defined(ESP8266)
+  void IRAM_ATTR TimerHandler()
+  {
+    ISR_Timer.run();
+  }
+#elif defined(ESP32) 
+  bool IRAM_ATTR TimerHandler(void * timerNo)
+  {
+    ISR_Timer.run();
+    return true;
+  }
+#endif
 
 void tmr0ISR(){
   if (Serial.available() > 0){
@@ -48,7 +67,6 @@ void IRAM_ATTR btn1ISR(){
 }
 
 #define TIMER_INTERVAL_MS        50L
-
 #define TIMER0_INTERVAL             100L 
 #define TIMER1_INTERVAL             1000L 
 #define TIMER2_INTERVAL             2000L
