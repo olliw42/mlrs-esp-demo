@@ -22,6 +22,11 @@
   #include "ESP32TimerInterrupt.h"
   ESP32Timer ITimer(1);
   ESP32_ISR_Timer ISR_Timer;
+#elif defined(STM32)
+  #include "STM32TimerInterrupt.h"
+  #include "STM32_ISR_Timer.h"
+  STM32Timer ITimer(TIM1);
+  STM32_ISR_Timer ISR_Timer;
 #endif
 
 #if defined(ESP8266)
@@ -34,6 +39,11 @@
   {
     ISR_Timer.run();
     return true;
+  }
+#elif defined(STM32)
+  void TimerHandler()
+  {
+    ISR_Timer.run();
   }
 #endif
 
@@ -57,14 +67,26 @@ void tmr2ISR(){
 
 uint32_t lastPress = 0;
 
-void IRAM_ATTR btn1ISR(){
-  if (millis()-lastPress > 100) {
-    lastPress = millis();
-    Serial.print(millis());
-    Serial.println(": BTN1");
-  }
+#if defined(STM32)
+  void btn1ISR(){
+    if (millis()-lastPress > 100) {
+      lastPress = millis();
+      Serial.print(millis());
+      Serial.println(": BTN1");
+    }
 
-}
+  }
+#else
+  void IRAM_ATTR btn1ISR(){
+    if (millis()-lastPress > 100) {
+      lastPress = millis();
+      Serial.print(millis());
+      Serial.println(": BTN1");
+    }
+
+  }
+#endif
+
 
 #define TIMER_INTERVAL_MS        50L
 #define TIMER0_INTERVAL             100L 
@@ -73,8 +95,10 @@ void IRAM_ATTR btn1ISR(){
 
 void setup() {
 
-  // Make sure WiFi isn't doing anything weird in the background
-  WiFi.mode(WIFI_OFF); 
+  #if defined (ESP8266)|| defined(ESP32)
+    // Make sure WiFi isn't doing anything weird in the background
+    WiFi.mode(WIFI_OFF); 
+  #endif
 
   // This is hardware serial and should default to TX0, RX0. I believe the ELRS receiver TX RX pins are connected to these. 
   Serial.begin(57600);
@@ -100,10 +124,12 @@ void setup() {
 
   // Not really testing SPI, but tests the imports
   SPI.begin();
-  SPI.setHwCs(true);
+  #ifndef STM32
+    SPI.setHwCs(true);
+    SPI.setFrequency(10000000);
+  #endif
   SPI.setBitOrder(MSBFIRST);
   SPI.setDataMode(SPI_MODE0);
-  SPI.setFrequency(10000000);
   
 }
 
